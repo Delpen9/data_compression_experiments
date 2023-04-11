@@ -46,7 +46,11 @@ if __name__ == '__main__':
     sBasis = noiselet(1024)
     q = np.random.permutation(1024)
 
-    sMatrix = [sBasis[q[:i], :].copy() for i in n]
-    y = [sMatrix[i] @ x for i in np.arange(4).astype(int)]
+    A = [sBasis[q[:i], :].copy() for i in n]
+    y = [A[i] @ x for i in np.arange(4).astype(int)]
+    x0 = [A[i].T @ y[i] for i in np.arange(4).astype(int)]
 
-    print(y[0].shape)
+
+    # print(x0[0].shape)
+
+    print((A[0] @ x0[0]).shape)
