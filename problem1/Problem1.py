@@ -1,6 +1,16 @@
-# Standard Libraries
+# Standard libraries
+import os
 import numpy as np
-import pandas as pd
+
+# Loading .mat files
+import scipy.io
+
+# Plotting
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Scipy libraries
+from scipy.optimize import linprog
 
 def noiselet(
     n : int
@@ -28,11 +38,15 @@ def noiselet(
     return N
 
 if __name__ == '__main__':
+    current_path = os.path.abspath(__file__)
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'data', 'full.mat'))
+    x = scipy.io.loadmat(file_directory)['X']
+
     n = [600, 700, 800, 900]
     sBasis = noiselet(1024)
-    sMatrix = [
-        sBasis[np.random.permutation(1024)[:i], :].copy()
-        for i in n
-    ]
+    q = np.random.permutation(1024)
 
-    print(sMatrix[0].shape)
+    sMatrix = [sBasis[q[:i], :].copy() for i in n]
+    y = [sMatrix[i] @ x for i in np.arange(4).astype(int)]
+
+    print(y[0].shape)
