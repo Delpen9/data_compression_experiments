@@ -12,8 +12,6 @@ import seaborn as sns
 # Scipy libraries
 from scipy.optimize import linprog
 
-from minimization import l1eq_pd
-
 def noiselet(
     n : int
 ) -> np.ndarray:
@@ -39,7 +37,60 @@ def noiselet(
 
     return N
 
+def minimize(
+    A : np.ndarray,
+    y : np.ndarray,
+    n : int
+) -> np.ndarray:
+    '''
+    '''
+    c = np.hstack([np.zeros(1024), np.ones(1024)])
+
+    # Constraint 1: x - z <= 0
+    A1 = np.hstack([np.identity(1024), -np.identity(1024)])
+    b1 = np.zeros(1024)
+
+    # Constraint 2: -x - z <= 0
+    A2 = np.hstack([-np.identity(1024), -np.identity(1024)])
+    b2 = np.zeros(1024)
+
+    A_ineq = np.vstack([A1, A2])
+    b_ineq = np.hstack([b1, b2])
+
+    # Constraint 3: Ax = y
+    A_eq = np.hstack([A, np.zeros((n, 1024))])
+    b_eq = y.flatten()
+
+    # Solve the linear programming problem
+    result = linprog(
+        c,
+        # A_ub = A_ineq,
+        # b_ub = b_ineq,
+        A_eq = A_eq,
+        b_eq = b_eq,
+        method = 'highs'
+    )
+
+    x_opt = result.x[:1024].reshape(1024, 1)
+
+    return x_opt
+
+def relative_reconstruction_error(
+    original: np.ndarray,
+    reconstructed : np.ndarray
+) -> float:
+    '''
+    '''
+    diff = original - reconstructed
+    frobenius_norm_diff = np.linalg.norm(diff, ord='fro')
+    frobenius_norm_original = np.linalg.norm(original, ord='fro')
+    
+    return frobenius_norm_diff / frobenius_norm_original
+
+
 if __name__ == '__main__':
+    np.random.seed(1234)
+
     current_path = os.path.abspath(__file__)
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'data', 'full.mat'))
     X = scipy.io.loadmat(file_directory)['X']
@@ -60,5 +111,23 @@ if __name__ == '__main__':
 
     ## TODO: We just need to recover the signal now and compare
     ## =======================
-    ## 
+    xp = minimize(A[0], y[0], 600)
+    xprec = (-np.linalg.pinv(psi) @ xp).real
+
+    print(relative_reconstruction_error(X, xprec))
+
+    xp = minimize(A[1], y[1], 700)
+    xprec = (-np.linalg.pinv(psi) @ xp).real
+
+    print(relative_reconstruction_error(X, xprec))
+
+    xp = minimize(A[2], y[2], 800)
+    xprec = (-np.linalg.pinv(psi) @ xp).real
+
+    print(relative_reconstruction_error(X, xprec))
+
+    xp = minimize(A[3], y[3], 900)
+    xprec = (-np.linalg.pinv(psi) @ xp).real
+
+    print(relative_reconstruction_error(X, xprec))
     ## =======================
