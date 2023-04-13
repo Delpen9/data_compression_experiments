@@ -12,6 +12,8 @@ import seaborn as sns
 # Scipy libraries
 from scipy.optimize import linprog
 
+from minimization import l1eq_pd
+
 def noiselet(
     n : int
 ) -> np.ndarray:
@@ -40,17 +42,23 @@ def noiselet(
 if __name__ == '__main__':
     current_path = os.path.abspath(__file__)
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'data', 'full.mat'))
-    x = scipy.io.loadmat(file_directory)['X']
+    X = scipy.io.loadmat(file_directory)['X']
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'data', 'haar.mat'))
+    psi = scipy.io.loadmat(file_directory)['W']
 
     n = [600, 700, 800, 900]
     sBasis = noiselet(1024)
     q = np.random.permutation(1024)
 
-    A = [sBasis[q[:i], :].copy() for i in n]
-    y = [A[i] @ x for i in np.arange(4).astype(int)]
-    x0 = [A[i].T @ y[i] for i in np.arange(4).astype(int)]
+    phi = [sBasis[q[:i], :].copy() for i in n]
 
+    y = [phi[i] @ X for i in np.arange(4).astype(int)]
+    x0 = [psi.T @ (phi[i].T @ y[i]) for i in np.arange(4).astype(int)]
 
-    # print(x0[0].shape)
+    A = [phi[i] @ psi for i in np.arange(4).astype(int)]
 
-    print((A[0] @ x0[0]).shape)
+    ## TODO: We just need to recover the signal now and compare
+    ## =======================
+    ## 
+    ## =======================
