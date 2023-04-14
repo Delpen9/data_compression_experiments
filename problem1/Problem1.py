@@ -1,6 +1,10 @@
+import warnings
+warnings.filterwarnings('ignore')
+
 # Standard libraries
 import os
 import numpy as np
+import pandas as pd
 
 # Loading .mat files
 import scipy.io
@@ -14,6 +18,9 @@ from scipy.optimize import linprog
 
 # Sklearn libraries
 from sklearn.metrics import mean_squared_error
+
+# Other libraries
+import cvxpy as cp
 
 def noiselet(
     n : int
@@ -42,27 +49,21 @@ def noiselet(
 
 def minimize(
     A : np.ndarray,
-    y : np.ndarray,
-    n : int
+    y : np.ndarray
 ) -> np.ndarray:
     '''
     '''
-    c = np.hstack([np.zeros(1024), np.ones(1024)])
+    x = cp.Variable((1024, 1))
+    objective = cp.Minimize(cp.norm1(x))
 
-    # Constraint: Ax = y
-    A_eq = np.hstack([A, np.zeros((n, 1024))])
-    b_eq = y.flatten()
+    constraints = [y == A @ x]
 
-    result = linprog(
-        c,
-        A_eq = A_eq,
-        b_eq = b_eq,
-        method = 'highs'
-    )
+    problem = cp.Problem(objective, constraints)
+    problem.solve(solver = cp.OSQP, verbose = False)
 
-    x_opt = result.x[:1024].reshape(1024, 1)
+    x_optimal = x.value
 
-    return x_opt
+    return x_optimal
 
 if __name__ == '__main__':
     np.random.seed(1234)
@@ -80,30 +81,90 @@ if __name__ == '__main__':
 
     phi = [sBasis[q[:i], :].copy() for i in n]
 
-    y = [phi[i] @ X for i in np.arange(4).astype(int)]
-    x0 = [psi.T @ (phi[i].T @ y[i]) for i in np.arange(4).astype(int)]
+    y = [phi[i] @ X for i in np.arange(len(n)).astype(int)]
+    A = [phi[i] @ psi.T for i in np.arange(len(n)).astype(int)]
 
-    A = [phi[i] @ psi for i in np.arange(4).astype(int)]
+    xprec_results = []
+    mse_results_normal = []
+    for i in range(len(n)):
+        xp = minimize(A[i], y[i])
+        xprec = (np.linalg.pinv(psi) @ xp).real
+        mse = mean_squared_error(X, xprec)
+        mse_results_normal.append(mse)
+        print(fr'''The mean-square error for n = {n[i]} is: {mse}''')
+        xprec_results.append(xprec)
 
-    ## TODO: We just need to recover the signal now and compare
-    ## =======================
-    xp = minimize(A[0], y[0], 600)
-    xprec = (-np.linalg.pinv(psi) @ xp).real
+    indices = np.arange(0, 1024).reshape(-1, 1)
+    x_df = pd.DataFrame(np.hstack((indices, X)), columns = ['Index', 'Value'])
 
-    print(mean_squared_error(X, xprec))
+    for i in range(len(n)):
+        xprec_df = pd.DataFrame(np.hstack((indices, xprec_results[i])), columns = ['Index', 'Value'])
 
-    xp = minimize(A[1], y[1], 700)
-    xprec = (-np.linalg.pinv(psi) @ xp).real
+        sns.lineplot(x = 'Index', y = 'Value', data = xprec_df)
+        sns.lineplot(x = 'Index', y = 'Value', data = x_df)
+        plt.title(fr'n = {600 + i * 100}; Xprec VS. X')
+        plt.xlabel('Index')
+        plt.ylabel('Value')
 
-    print(mean_squared_error(X, xprec))
+        file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', fr'n_{600 + i * 100}_vs_x.png'))
+        plt.savefig(file_directory, dpi = 100)
 
-    xp = minimize(A[2], y[2], 800)
-    xprec = (-np.linalg.pinv(psi) @ xp).real
+        plt.clf()
+        plt.cla()
 
-    print(mean_squared_error(X, xprec))
+    ## =================
+    ## Adding random noise
+    ## =================
+    mu = 0
+    sigma = 10
+    X += np.random.normal(mu, sigma, 1024).reshape(-1, 1)
 
-    xp = minimize(A[3], y[3], 900)
-    xprec = (-np.linalg.pinv(psi) @ xp).real
+    y = [phi[i] @ X for i in np.arange(len(n)).astype(int)]
+    A = [phi[i] @ psi.T for i in np.arange(len(n)).astype(int)]
 
-    print(mean_squared_error(X, xprec))
-    ## =======================
+    xprec_results = []
+    mse_results_noisy = []
+    for i in range(len(n)):
+        xp = minimize(A[i], y[i])
+        xprec = (np.linalg.pinv(psi) @ xp).real
+        mse = mean_squared_error(X, xprec)
+        mse_results_noisy.append(mse)
+        print(fr'''(Normally Distrbuted Noise) The mean-square error for n = {n[i]} is: {mse}''')
+        xprec_results.append(xprec)
+
+    indices = np.arange(0, 1024).reshape(-1, 1)
+    x_df = pd.DataFrame(np.hstack((indices, X)), columns = ['Index', 'Value'])
+
+    for i in range(len(n)):
+        xprec_df = pd.DataFrame(np.hstack((indices, xprec_results[i])), columns = ['Index', 'Value'])
+
+        sns.lineplot(x = 'Index', y = 'Value', data = xprec_df)
+        sns.lineplot(x = 'Index', y = 'Value', data = x_df)
+        plt.title(fr'n = {600 + i * 100}; Xprec VS. X Noisy')
+        plt.xlabel('Index')
+        plt.ylabel('Value')
+
+        file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', fr'n_{600 + i * 100}_vs_x_with_noise.png'))
+        plt.savefig(file_directory, dpi = 100)
+
+        plt.clf()
+        plt.cla()
+
+    ## =================
+    ## Mean Square Error Plotting
+    ## =================
+    indices = np.arange(600, 1000, 100).reshape(-1, 1)
+    mse_normal_df = pd.DataFrame(np.hstack((indices, np.array(mse_results_normal).reshape(-1, 1))), columns = ['n-value', 'Error'])
+    mse_noisy_df = pd.DataFrame(np.hstack((indices, np.array(mse_results_noisy).reshape(-1, 1))), columns = ['n-value', 'Error'])
+
+    sns.lineplot(x = 'n-value', y = 'Error', data = mse_normal_df)
+    sns.lineplot(x = 'n-value', y = 'Error', data = mse_noisy_df)
+    plt.title(fr'n-value VS. Errors')
+    plt.xlabel('n-value')
+    plt.ylabel('Error')
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'n_value_vs_errors.png'))
+    plt.savefig(file_directory, dpi = 100)
+
+    plt.clf()
+    plt.cla()
