@@ -13,9 +13,6 @@ import scipy.io
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Scipy libraries
-from scipy.optimize import linprog
-
 # Sklearn libraries
 from sklearn.metrics import mean_squared_error
 
