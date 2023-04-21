@@ -21,9 +21,10 @@ import cv2
 
 def block_coordinate_descent(
     M : np.ndarray,
-    _lambda : float = 1e-6,
+    _lambda : float = 1e-9,
     _gamma : float = 1e-6,
-    tolerance : float = 1.5e+1
+    max_iterations : float = 100,
+    verbose : bool = False
 ) -> tuple[np.ndarray, np.ndarray]:
     '''
     '''
@@ -32,37 +33,40 @@ def block_coordinate_descent(
 
     m_norm = np.linalg.norm(M, 'fro')
 
-    converged = False
-    stopCriterion = 1
-    objective_new = 1
+    mu = 2
+    iteration = 0
 
-    while not converged:
-        alpha_L = M - S
+    stop_algorithm = False
+    while not stop_algorithm:
+        iteration += 1
+
+        U, SV, V = np.linalg.svd(M - S)
+        SV = np.diag(SV)
+        diagS = np.diag(SV)
+        alpha_L = U[:, :mu] @ np.diag(diagS[:mu]) @ V[:mu, :]
+
         gamma_L = 0.5 * _gamma * np.linalg.norm(L, 'nuc')
         
-        L[alpha_L >= gamma_L] += gamma_L
+        L[alpha_L >= gamma_L] = alpha_L[alpha_L >= gamma_L] - gamma_L
         L[(alpha_L >= -gamma_L) & (alpha_L < gamma_L)] = 0
-        L[alpha_L < -gamma_L] -= gamma_L
+        L[alpha_L < -gamma_L] = alpha_L[alpha_L < -gamma_L] + gamma_L
 
         alpha_S = M - L
         gamma_S = 0.5 * _lambda * np.linalg.norm(S, ord = 1)
 
-        S[alpha_S >= gamma_S] += gamma_S
+        S[alpha_S >= gamma_S] = alpha_S[alpha_S >= gamma_S] - gamma_S
         S[(alpha_S >= -gamma_S) & (alpha_S < gamma_S)] = 0
-        S[alpha_S < -gamma_S] -= gamma_S
+        S[alpha_S < -gamma_S] = alpha_S[alpha_S < -gamma_S] + gamma_S
 
-        objective = objective_new
+        objective = np.linalg.norm(M - L - S, ord = 'fro')**2
+        objective += _gamma * np.linalg.norm(L, 'nuc')
+        objective += _lambda * np.linalg.norm(S, ord = 1)
 
-        objective_new = np.linalg.norm(M - L - S, ord = 'fro')**2
-        objective_new += _gamma * np.linalg.norm(L, 'nuc')
-        objective_new += _lambda * np.linalg.norm(S, ord = 1)
-        
-        stopCriterion = np.abs(objective_new - objective)
+        if verbose:
+            print(objective)
 
-        print(stopCriterion)
-
-        if stopCriterion < tolerance:
-            converged = True
+        if iteration == max_iterations:
+            stop_algorithm = True
 
     return (L, S)
 
@@ -127,37 +131,37 @@ if __name__ == '__main__':
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'data', 'Image_anomaly.mat'))
     X = scipy.io.loadmat(file_directory)['X']
 
-    # X = ((X - X.min()) / (X.max() - X.min())) * 255
+    X = ((X - X.min()) / (X.max() - X.min())) * 255
 
-    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'X_problem3.png'))
-    # cv2.imwrite(file_directory, X.astype(np.uint8))
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'X_problem3.png'))
+    cv2.imwrite(file_directory, X.astype(np.uint8))
 
-    L, S = rpca(X)
-
-    mse = mean_squared_error(X, L + S)
-    print(mse)
-
-    L = ((L - L.min()) / (L.max() - L.min())) * 255
-
-    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'L_rpca.png'))
-    cv2.imwrite(file_directory, L.astype(np.uint8))
-
-    S = ((S - S.min()) / (S.max() - S.min())) * 255
-
-    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_rpca.png'))
-    cv2.imwrite(file_directory, S.astype(np.uint8))
-
-    # L, S = block_coordinate_descent(X)
+    # L, S = rpca(X)
 
     # mse = mean_squared_error(X, L + S)
     # print(mse)
 
     # L = ((L - L.min()) / (L.max() - L.min())) * 255
 
-    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'L_block_coordinate_descent.png'))
+    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'L_rpca.png'))
     # cv2.imwrite(file_directory, L.astype(np.uint8))
 
     # S = ((S - S.min()) / (S.max() - S.min())) * 255
 
-    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_block_coordinate_descent.png'))
+    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_rpca.png'))
     # cv2.imwrite(file_directory, S.astype(np.uint8))
+
+    L, S = block_coordinate_descent(X, verbose = True)
+
+    mse = mean_squared_error(X, L + S)
+    print(fr'The mean square error for block coordinate descent is {mse}.')
+
+    L = ((L - L.min()) / (L.max() - L.min())) * 255
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'L_block_coordinate_descent.png'))
+    cv2.imwrite(file_directory, L.astype(np.uint8))
+
+    S = ((S - S.min()) / (S.max() - S.min())) * 255
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_block_coordinate_descent.png'))
+    cv2.imwrite(file_directory, S.astype(np.uint8))
