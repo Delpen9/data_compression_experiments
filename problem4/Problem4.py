@@ -49,7 +49,7 @@ def RKHS(
     '''
     _lambda = 0.1
     K = gram_matrix()
-    _alpha = np.linalg.inv(K + _lambda).T @ y
+    _alpha = np.linalg.inv(K + _lambda * np.eye(K.shape[0])) @ y
     y_hat = K @ _alpha
     return y_hat
 
@@ -66,6 +66,9 @@ if __name__ == '__main__':
     y_hat = ((y_hat - y_hat.min()) / (y_hat.max() - y_hat.min())) * 255
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'problem_4_denoised_image.png'))
     cv2.imwrite(file_directory, y_hat)
+
+    print(np.std(y_hat))
+    print(np.std(y))
 
     # y = ((y - y.min()) / (y.max() - y.min())) * 255
     # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'problem_4_image.png'))
