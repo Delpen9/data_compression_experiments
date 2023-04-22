@@ -88,7 +88,7 @@ if __name__ == '__main__':
         xprec = (np.linalg.pinv(psi) @ xp).real
         mse = mean_squared_error(X, xprec)
         mse_results_normal.append(mse)
-        print(fr'''The mean-square error for n = {n[i]} is: {mse}''')
+        print(fr'''(Original Data) The mean-square error for n = {n[i]} is: {mse}''')
         xprec_results.append(xprec)
 
     indices = np.arange(0, 1024).reshape(-1, 1)
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         xprec = (np.linalg.pinv(psi) @ xp).real
         mse = mean_squared_error(X, xprec)
         mse_results_noisy.append(mse)
-        print(fr'''(Normally Distrbuted Noise) The mean-square error for n = {n[i]} is: {mse}''')
+        print(fr'''(Normally Distributed Noise) The mean-square error for n = {n[i]} is: {mse}''')
         xprec_results.append(xprec)
 
     indices = np.arange(0, 1024).reshape(-1, 1)
@@ -152,15 +152,27 @@ if __name__ == '__main__':
     ## =================
     indices = np.arange(600, 1000, 100).reshape(-1, 1)
     mse_normal_df = pd.DataFrame(np.hstack((indices, np.array(mse_results_normal).reshape(-1, 1))), columns = ['n-value', 'Error'])
-    mse_noisy_df = pd.DataFrame(np.hstack((indices, np.array(mse_results_noisy).reshape(-1, 1))), columns = ['n-value', 'Error'])
 
     sns.lineplot(x = 'n-value', y = 'Error', data = mse_normal_df)
+    plt.title(fr'n-value VS. Errors')
+    plt.xlabel('n-value')
+    plt.ylabel('Error')
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'normal_n_value_vs_errors.png'))
+    plt.savefig(file_directory, dpi = 100)
+
+    plt.clf()
+    plt.cla()
+
+    indices = np.arange(600, 1000, 100).reshape(-1, 1)
+    mse_noisy_df = pd.DataFrame(np.hstack((indices, np.array(mse_results_noisy).reshape(-1, 1))), columns = ['n-value', 'Error'])
+
     sns.lineplot(x = 'n-value', y = 'Error', data = mse_noisy_df)
     plt.title(fr'n-value VS. Errors')
     plt.xlabel('n-value')
     plt.ylabel('Error')
 
-    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'n_value_vs_errors.png'))
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'noisy_n_value_vs_errors.png'))
     plt.savefig(file_directory, dpi = 100)
 
     plt.clf()
