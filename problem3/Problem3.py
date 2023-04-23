@@ -37,6 +37,9 @@ def block_coordinate_descent(
     iteration = 0
 
     stop_algorithm = False
+
+    objective_function_values = []
+
     while not stop_algorithm:
         iteration += 1
 
@@ -62,13 +65,16 @@ def block_coordinate_descent(
         objective += _gamma * np.linalg.norm(L, 'nuc')
         objective += _lambda * np.linalg.norm(S, ord = 1)
 
+        objective_function_values.append(objective)
+
         if verbose:
             print(objective)
 
         if iteration == max_iterations:
             stop_algorithm = True
 
-    return (L, S)
+    objective_function_values = np.array(objective_function_values)
+    return (L, S, objective_function_values)
 
 def rpca(
     M : np.ndarray,
@@ -151,7 +157,7 @@ if __name__ == '__main__':
     # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_rpca.png'))
     # cv2.imwrite(file_directory, S.astype(np.uint8))
 
-    L, S = block_coordinate_descent(X, verbose = True)
+    L, S, objective_function_values = block_coordinate_descent(X, verbose = True)
 
     mse = mean_squared_error(X, L + S)
     print(fr'The mean square error for block coordinate descent is {mse}.')
@@ -165,3 +171,18 @@ if __name__ == '__main__':
 
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'S_block_coordinate_descent.png'))
     cv2.imwrite(file_directory, S.astype(np.uint8))
+
+    # Plotting Objective Function
+    indices = np.arange(1, len(objective_function_values) + 1).reshape(-1, 1)
+    objective_function_df = pd.DataFrame(np.hstack((indices, np.array(objective_function_values).reshape(-1, 1))), columns = ['Iteration', 'Objective Function'])
+
+    sns.lineplot(x = 'Iteration', y = 'Objective Function', data = objective_function_df)
+    plt.title(fr'Iteration VS. Objective Function')
+    plt.xlabel('Iteration')
+    plt.ylabel('Objective Function')
+
+    file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'iteration_vs_objective_function.png'))
+    plt.savefig(file_directory, dpi = 100)
+
+    plt.clf()
+    plt.cla()

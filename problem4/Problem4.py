@@ -67,9 +67,15 @@ if __name__ == '__main__':
     file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'problem_4_denoised_image.png'))
     cv2.imwrite(file_directory, y_hat)
 
-    print(np.std(y_hat))
-    print(np.std(y))
+    y = ((y - y.min()) / (y.max() - y.min())) * 255
 
-    # y = ((y - y.min()) / (y.max() - y.min())) * 255
-    # file_directory = os.path.abspath(os.path.join(current_path, '..', '..', 'output', 'problem_4_image.png'))
-    # cv2.imwrite(file_directory, y)
+    smoothed_standard_deviation = np.std(y_hat)
+    original_standard_deviation = np.std(y)
+
+    noise_standard_deviation = np.abs(original_standard_deviation - smoothed_standard_deviation)
+
+    print(fr'The standard deviation of the smoothed image is: {smoothed_standard_deviation}')
+    print(fr'The standard deviation of the original image is: {original_standard_deviation}')
+    print(fr'The standard deviation of the noise is: {noise_standard_deviation}')
+
+
